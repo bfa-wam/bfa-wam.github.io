@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f2">
+  <title>BFA-WAM: Bridging Future Motion and Robot Action Generation</title>
+  <meta name="author" content="Fengyuan Liu, Fu Rong, Shaoyu Chen, Hui Sun, Qian Zhang, Lefei Zhang">
+  <meta name="description" content="BFA-WAM uses current RGB observations and flow-supervised future motion to guide robot actions. Explore its method, manipulation rollouts, and benchmark results.">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="BFA-WAM: Bridging Future Motion and Robot Action Generation">
+  <meta property="og:description" content="Compare predicted motion with robot execution and explore results on LIBERO, RoboTwin 2.0, and LIBERO-Plus.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="publication.js"></script>
+  <script defer src="benchmarks.js"></script>
+  <script defer src="site.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="wordmark" href="#overview" aria-label="BFA-WAM overview">
+        <img src="favicon.png" width="32" height="32" alt="">BFA-WAM
+      </a>
+      <button class="mobile-menu" type="button" aria-controls="navigation" aria-expanded="false" hidden>Menu</button>
+      <nav id="navigation" aria-label="Page sections">
+        <a href="#overview" aria-current="location">Overview</a>
+        <a href="#method">Method</a>
+        <a href="#rollouts">Rollouts</a>
+        <a href="#results">Results</a>
+        <a href="#citation">Cite</a>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <section id="overview" class="hero">
+      <div class="shell">
+        <div class="hero-layout">
+          <div class="hero-copy">
+            <h1><span class="sr-only">BFA-WAM: </span>Bridging <em>Future Motion</em> and Robot Action Generation</h1>
+            <p class="hero-lead">BFA-WAM combines what the robot sees with how objects are likely to move to guide its next actions.</p>
+            <div class="byline">
+              <p id="authors">
+                <span>Fengyuan Liu<sup>1</sup></span>,
+                <span>Fu Rong<sup>1</sup></span>,
+                <span>Shaoyu Chen<sup>2</sup></span>,
+                <span>Hui Sun<sup>2</sup></span>,
+                <span>Qian Zhang<sup>2</sup></span>,
+                <span aria-describedby="author-note">Lefei Zhang<sup>1*</sup></span>
+              </p>
+              <p id="affiliations">
+                <span><sup>1</sup> School of Computer Science, Wuhan University</span>
+                <span><sup>2</sup> Horizon Robotics</span>
+              </p>
+              <p id="author-note"><sup>*</sup> Corresponding author.</p>
+            </div>
+            <div class="resources" aria-label="Research resources">
+              <span id="arxiv-resource" class="resource-status">arXiv <small>forthcoming</small></span>
+              <span id="code-resource" class="resource-status">Code <small>coming soon</small></span>
+            </div>
+            <div class="hero-finding">
+              <span class="finding-value">+9.0<span> pp</span></span>
+              <p>LIBERO-Plus success rose from <strong>72.1%</strong> with future RGB to <strong>81.1%</strong> with future flow.</p>
+            </div>
+          </div>
+          <figure class="bottle-demo" aria-labelledby="bottle-title">
+            <header class="demo-heading">
+              <div><p class="demo-dataset">LIBERO-Goal</p><h2 id="bottle-title">Bottle placement</h2></div>
+              <a class="figure-link on-dark" href="assets/bottle-comparison.pdf">Full figure <span class="file-type">PDF</span></a>
+            </header>
+            <div class="policy-grid">
+              <div class="policy">
+                <h3>Future RGB</h3>
+                <figure><img data-bottle="rgb-forecast" src="assets/bottle/rgb-forecast-60.png" width="224" height="196" alt="The RGB forecast shows the bottle lifted at step 60."><figcaption data-bottle-label="rgb-forecast">Predicted RGB at 60</figcaption></figure>
+                <figure><img data-bottle="rgb-observed" src="assets/bottle/rgb-observed-60.png" width="224" height="196" alt="The bottle remains at its reference height in the RGB-conditioned rollout at step 60."><figcaption data-bottle-label="rgb-observed">Observed at 60</figcaption></figure>
+              </div>
+              <div class="policy ours">
+                <h3>Future flow <span>· BFA-WAM</span></h3>
+                <figure><img data-bottle="flow-forecast" src="assets/bottle/flow-forecast-60.png" width="224" height="196" alt="Predicted flow localizes motion to the gripper and bottle over steps 56 to 60."><figcaption data-bottle-label="flow-forecast">Predicted flow 56–60</figcaption></figure>
+                <figure><img data-bottle="flow-observed" src="assets/bottle/flow-observed-60.png" width="224" height="196" alt="The bottle has risen above its reference height in the BFA-WAM rollout at step 60."><figcaption data-bottle-label="flow-observed">Observed at 60</figcaption></figure>
+              </div>
+            </div>
+            <div class="step-row">
+              <span>Target step</span>
+              <div class="steps needs-js" role="group" aria-label="Choose a target control step">
+                <button type="button" data-step="60" aria-pressed="true">60</button>
+                <button type="button" data-step="70" aria-pressed="false">70</button>
+                <button type="button" data-step="80" aria-pressed="false">80</button>
+              </div>
+              <span class="step-source" aria-live="polite">Replan <b id="replan-step">40</b> · Observe <b id="target-step">60</b></span>
+            </div>
+            <figcaption class="demo-caption"><span class="reference-line" aria-hidden="true"></span><span>Dashed lines mark the bottle base at step 40. <span id="bottle-observation">By step 60, BFA-WAM has lifted the bottle above the line.</span></span></figcaption>
+          </figure>
+        </div>
+        <details class="abstract">
+          <summary>Abstract</summary>
+          <div class="abstract-text">
+            <p>World action models (WAMs) use predictive world representations to guide robotic action generation. However, appearance-oriented prediction supervises motion only indirectly, while token-wise attention does not explicitly turn world information into shared modulation of action-layer updates. We introduce BFA-WAM, a framework that combines explicit future-motion supervision with world-conditioned action refinement.</p>
+            <p>RGB–flow fusion (RFF) allows action queries to attend jointly to current RGB features and flow-supervised future features, linking anticipated displacement to visible objects and their spatial context. The world model jointly learns future RGB and optical-flow prediction, with an additional one-step flow reconstruction objective supervising future-motion features under the input conditions used at deployment.</p>
+            <p>Complementing token-wise feature retrieval, world-conditioned modulation (WCM) uses separate observation and motion branches to summarize observed RGB and future-flow features. These summaries produce layer-wise shifts, scales, and gates shared across action positions, conditioning action refinement on the observed scene and anticipated motion. At inference, a single world-model pass supplies both the attention cache and modulation residuals, which are reused throughout action denoising without decoding future frames or estimating optical flow online. Extensive experiments across multiple benchmarks demonstrate the strong performance of BFA-WAM.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="method" class="section">
+      <div class="shell">
+        <div class="section-heading">
+          <div><p class="kicker">Method</p><h2>How future motion guides action</h2></div>
+          <p>At each replan, the world model processes the current scene, observation history, and future-motion slots once. The action model reuses those features throughout denoising.</p>
+        </div>
+        <figure class="architecture">
+          <a href="assets/architecture.pdf" aria-label="Open the full-resolution BFA-WAM architecture figure">
+            <img src="assets/architecture.webp" width="3720" height="2040" loading="lazy" alt="The World DiT supplies current RGB and future-flow features to the Action DiT. Separate observation and motion branches also modulate the action layers.">
+          </a>
+          <figcaption><span>World and action diffusion transformers, modulation branches, and attention masks.</span><a class="figure-link" href="assets/architecture.pdf">Full figure <span class="file-type">PDF</span></a></figcaption>
+        </figure>
+        <div class="method-pair">
+          <article><h3>RGB–flow fusion <span>RFF</span></h3><p>Current RGB features locate the gripper, objects, and goal. Features trained to predict future optical flow describe where motion is expected. Each action query attends to both sets of features together.</p></article>
+          <article><h3>World-conditioned modulation <span>WCM</span></h3><p>One branch summarizes the observed scene and another summarizes anticipated motion. Their outputs adjust shifts, scales, and gates in each action layer, sharing guidance across the action sequence.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="rollouts" class="section rollout-section">
+      <div class="shell">
+        <div class="section-heading">
+          <div><p class="kicker">Rollouts</p><h2>Two objects, one basket</h2></div>
+          <p>Both policies receive the same instruction. BFA-WAM transfers the soup can first, then places the cream cheese box. Fast-WAM manipulates the box and leaves the can on the table.</p>
+        </div>
+        <blockquote>“Put both the alphabet soup and the cream cheese box in the basket.”</blockquote>
+        <div class="filmstrips">
+          <figure class="filmstrip" data-policy="BFA-WAM">
+            <figcaption><h3>BFA-WAM</h3><span>Both objects in the basket</span></figcaption>
+            <div class="frame-grid">
+              <a href="assets/rollout/bfa-1.webp"><img src="assets/rollout/bfa-1.webp" width="256" height="224" loading="lazy" alt="BFA-WAM, initial tabletop scene"><span>0.00 s</span></a>
+              <a href="assets/rollout/bfa-2.webp"><img src="assets/rollout/bfa-2.webp" width="256" height="224" loading="lazy" alt="BFA-WAM, second keyframe of the two-object task"><span>4.00 s</span></a>
+              <a href="assets/rollout/bfa-3.webp"><img src="assets/rollout/bfa-3.webp" width="256" height="224" loading="lazy" alt="BFA-WAM, third keyframe of the two-object task"><span>6.38 s</span></a>
+              <a href="assets/rollout/bfa-4.webp"><img src="assets/rollout/bfa-4.webp" width="256" height="224" loading="lazy" alt="BFA-WAM, fourth keyframe of the two-object task"><span>8.79 s</span></a>
+              <a href="assets/rollout/bfa-5.webp"><img src="assets/rollout/bfa-5.webp" width="256" height="224" loading="lazy" alt="BFA-WAM, fifth keyframe of the two-object task"><span>10.38 s</span></a>
+              <a href="assets/rollout/bfa-6.webp"><img src="assets/rollout/bfa-6.webp" width="256" height="224" loading="lazy" alt="BFA-WAM, final frame with both objects in the basket"><span>11.17 s · final</span></a>
+            </div>
+          </figure>
+          <figure class="filmstrip" data-policy="Fast-WAM">
+            <figcaption><h3>Fast-WAM</h3><span>Soup can left on the table</span></figcaption>
+            <div class="frame-grid">
+              <a href="assets/rollout/fast-1.webp"><img src="assets/rollout/fast-1.webp" width="256" height="224" loading="lazy" alt="Fast-WAM, initial tabletop scene"><span>0.00 s</span></a>
+              <a href="assets/rollout/fast-2.webp"><img src="assets/rollout/fast-2.webp" width="256" height="224" loading="lazy" alt="Fast-WAM, second keyframe of the two-object task"><span>4.17 s</span></a>
+              <a href="assets/rollout/fast-3.webp"><img src="assets/rollout/fast-3.webp" width="256" height="224" loading="lazy" alt="Fast-WAM, third keyframe of the two-object task"><span>8.33 s</span></a>
+              <a href="assets/rollout/fast-4.webp"><img src="assets/rollout/fast-4.webp" width="256" height="224" loading="lazy" alt="Fast-WAM, fourth keyframe of the two-object task"><span>16.62 s</span></a>
+              <a href="assets/rollout/fast-5.webp"><img src="assets/rollout/fast-5.webp" width="256" height="224" loading="lazy" alt="Fast-WAM, fifth keyframe of the two-object task"><span>20.79 s</span></a>
+              <a href="assets/rollout/fast-6.webp"><img src="assets/rollout/fast-6.webp" width="256" height="224" loading="lazy" alt="Fast-WAM, final frame with the soup can still on the table"><span>29.12 s · final</span></a>
+            </div>
+          </figure>
+        </div>
+        <div class="rollout-caption"><p>External-camera keyframes sampled independently from each rollout. Times indicate video playback time.</p><a class="figure-link" href="assets/rollout-comparison.pdf">Full figure <span class="file-type">PDF</span></a></div>
+      </div>
+    </section>
+
+    <section id="results" class="section">
+      <div class="shell">
+        <div class="section-heading">
+          <div><p class="kicker">Results</p><h2>Manipulation performance</h2></div>
+          <p>The same architecture is evaluated on language-conditioned tasks, coordinated bimanual manipulation, and seven kinds of distribution shift. The LIBERO-trained policy transfers directly to LIBERO-Plus.</p>
+        </div>
+        <dl class="benchmark-summary">
+          <div><dt>LIBERO</dt><dd><span class="score">99.0<span>%</span></span><span class="measurement">Mean across four task suites</span></dd></div>
+          <div><dt>RoboTwin 2.0</dt><dd><span class="score">93.5<span>%</span></span><span class="measurement">Mean of clean and randomized settings</span></dd></div>
+          <div><dt>LIBERO-Plus</dt><dd><span class="score">81.1<span>%</span></span><span class="measurement">Overall success across 10,030 variants</span></dd></div>
+        </dl>
+        <div id="benchmark-explorer" class="needs-js">
+          <div class="benchmark-tabs" role="tablist" aria-label="Choose a benchmark">
+            <button id="tab-plus" type="button" role="tab" aria-selected="true" aria-controls="benchmark-panel" data-benchmark="plus">LIBERO-Plus</button>
+            <button id="tab-libero" type="button" role="tab" aria-selected="false" aria-controls="benchmark-panel" data-benchmark="libero" tabindex="-1">LIBERO</button>
+            <button id="tab-robotwin" type="button" role="tab" aria-selected="false" aria-controls="benchmark-panel" data-benchmark="robotwin" tabindex="-1">RoboTwin 2.0</button>
+          </div>
+          <div id="benchmark-panel" role="tabpanel" aria-labelledby="tab-plus" tabindex="0">
+            <div class="chart-heading"><div><h3 id="chart-title"></h3><p id="chart-context"></p></div><div class="legend"><span><i class="ours-swatch"></i>BFA-WAM</span><span><i class="baseline-swatch"></i>Fast-WAM</span></div></div>
+            <div id="comparison-chart" aria-label="Success rate by evaluation condition"></div>
+            <details class="data-details" id="full-results"><summary>Full benchmark table</summary><div class="table-scroll" role="region" aria-label="Scrollable benchmark results" tabindex="0"><table id="benchmark-table"></table></div><p id="table-note" class="table-note"></p></details>
+          </div>
+        </div>
+        <noscript><p>Enable JavaScript to explore the benchmark breakdowns.</p></noscript>
+        <section id="inference-latency" aria-labelledby="latency-title">
+          <h3 id="latency-title">Inference latency</h3>
+          <p id="latency-context">Mean time per policy call after warm-up on NVIDIA H20. BFA-WAM-Fast uses two action denoising steps. The standard model uses ten.</p>
+          <table aria-labelledby="latency-title" aria-describedby="latency-context">
+            <thead>
+              <tr><th scope="col">Policy</th><th scope="col">Latency</th><th scope="col">LIBERO-Plus success rate</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Fast-WAM</th><td>299.3 ms</td><td>49.5%</td></tr>
+              <tr><th scope="row">BFA-WAM</th><td>524.9 ms</td><td>81.1%</td></tr>
+              <tr><th scope="row">BFA-WAM-Fast</th><td>194.3 ms</td><td>79.3%</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </section>
+
+    <section id="citation" class="citation-section">
+      <div class="shell citation-layout">
+        <div><p class="kicker">Citation</p><h2>Cite BFA-WAM</h2><p id="citation-status">The citation will be updated with the arXiv identifier.</p></div>
+        <div class="citation-block">
+          <div class="citation-tools"><span>BibTeX</span><button type="button" id="copy-citation" class="needs-js">Copy BibTeX</button></div>
+          <pre><code id="bibtex">@misc{bfawam2026,
+  author = {Fengyuan Liu and Fu Rong and Shaoyu Chen and Hui Sun and Qian Zhang and Lefei Zhang},
+  title = {{BFA-WAM}: Bridging Future Motion and Robot Action Generation},
+  year = {2026},
+  note = {Manuscript}
+}</code></pre>
+          <span class="sr-only" id="copy-status" role="status"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="shell"><span>BFA-WAM</span><a href="#overview">Back to top</a></div></footer>
+  <dialog id="frame-viewer" aria-labelledby="viewer-title">
+    <div class="viewer-heading"><h2 id="viewer-title">Rollout frame</h2><button type="button" id="close-viewer">Close</button></div>
+    <img id="viewer-image" width="256" height="224" alt="">
+    <div class="viewer-controls"><button id="previous-frame" type="button">Previous</button><span id="viewer-position" role="status"></span><button id="next-frame" type="button">Next</button></div>
+  </dialog>
+</body>
+</html>
